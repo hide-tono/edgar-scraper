@@ -21,7 +21,10 @@ def lambda_handler(event, context):
 
     for i in target_idx:
         data_html = urlopen('https://www.sec.gov' + link_list[int(i) - 1])
-        print(BeautifulSoup(data_html))
+        data_trs = BeautifulSoup(data_html).find('table', {'class': 'report'}).findAll('tr')
+        data = [{tr.find('a').text: tr.findAll('td').text} for tr in data_trs]
+        print(data)
+        break
 
     return target_idx
     # xlsx_link = detail_bs.find('a', href=re.compile('.*.xlsx')).attrs['href']
