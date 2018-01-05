@@ -43,12 +43,12 @@ def lambda_handler(event, context):
     ticker = random.choice(sp500)
     list_html = urlopen(
         "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={}&owner=exclude&count=40&hidefilings=0".format(ticker))
-    list_bs = BeautifulSoup(list_html)
+    list_bs = BeautifulSoup(list_html, 'lxml')
     interactive_link = []
     for child in list_bs.find_all('a', {'id': 'interactiveDataBtn'}):
         interactive_link.append(child.attrs['href'])
     detail_html = urlopen('https://www.sec.gov' + interactive_link[0])
-    detail_bs = BeautifulSoup(detail_html)
+    detail_bs = BeautifulSoup(detail_html, 'lxml')
     js = detail_bs.find('script', {'language': 'javascript'})
     matcher = re.compile('/Archives/edgar/data/.*.htm')
     link_list = matcher.findall(js.string)
@@ -56,11 +56,12 @@ def lambda_handler(event, context):
     target = detail_bs.findAll('a', {'class': 'xbrlviewer'}, text=re.compile(r'.*CONSOLIDATED.*'))
     target_idx = [i.attrs['href'][-3] for i in target]
 
+    print('ticker={}'.format(ticker))
     for i in target_idx:
         data_html = urlopen('https://www.sec.gov' + link_list[int(i) - 1])
-        data_trs = BeautifulSoup(data_html).find('table', {'class': 'report'}).findAll('tr')
+        data_trs = BeautifulSoup(data_html, 'lxml').find('table', {'class': 'report'}).findAll('tr')
         data = [(tr.find('a'), tr.findAll('td')) for tr in data_trs]
-        data2 = [(a.text, re.sub(r'[$ ,()\xa0\n]', '', tds[1].text[:-1])) for (a, tds) in data if a is not None]
+        data2 = [(a.text, re.sub(r'[$\[\] ,()\xa0\n]', '', tds[1].text[:-1])) for (a, tds) in data if a is not None]
         a_and_td = dict([(a, float(td)) for (a, td) in data2 if not td == ''])
         for (a, td) in a_and_td.items():
             print(a, td)
